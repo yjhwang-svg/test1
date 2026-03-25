@@ -62,10 +62,19 @@ def _lockout_remaining_text() -> str:
     return f"{m}분 {s}초"
 
 
+def ensure_db() -> None:
+    """Git/Cloud 배포 시 marketing.db가 없으면 스크립트와 동일 경로에 생성."""
+    if DB_PATH.is_file():
+        return
+    from setup_data import create_db
+
+    create_db()
+
+
 def load_report() -> pd.DataFrame:
     if not DB_PATH.is_file():
         return pd.DataFrame()
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(str(DB_PATH))
     try:
         df = pd.read_sql("SELECT * FROM daily_report", conn)
     finally:
@@ -191,15 +200,14 @@ def render_dashboard(df: pd.DataFrame) -> None:
         revenue=("revenue", "sum"),
         conversions=("conversions", "sum"),
     )
-    by_ch["roas"] = by_ch.apply(
-        lambda r: (r["revenue"] / r["cost"]) if r["cost"] else 0.0, axis=1
-    )
+    c = by_ch["cost"].replace(0, pd.NA)
+    by_ch["roas"] = (by_ch["revenue"] / c).fillna(0.0)
     by_ch = by_ch.sort_values("cost", ascending=False)
 
     st.subheader("채널별 요약")
     st.dataframe(
         by_ch,
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         column_config={
             "channel": st.column_config.TextColumn("채널"),
@@ -217,10 +225,11 @@ def render_dashboard(df: pd.DataFrame) -> None:
 def main() -> None:
     st.set_page_config(
         page_title="마케팅 대시보드",
-        page_icon="📊",
+        page_icon=":bar_chart:",
         layout="wide",
     )
 
+    ensure_db()
     _init_auth_state()
 
     if not st.session_state.auth_ok:

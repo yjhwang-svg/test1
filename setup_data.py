@@ -5,8 +5,10 @@
 import sqlite3
 import random
 from datetime import datetime, timedelta
+from pathlib import Path
 
-DB_PATH = "marketing.db"
+BASE_DIR = Path(__file__).resolve().parent
+DB_PATH = BASE_DIR / "marketing.db"
 
 # 채널별 설정 (평균 CPC, 전환율 등)
 CHANNELS = {
@@ -26,8 +28,8 @@ CAMPAIGNS = {
 }
 
 
-def create_db():
-    conn = sqlite3.connect(DB_PATH)
+def create_db() -> None:
+    conn = sqlite3.connect(str(DB_PATH))
     cur = conn.cursor()
 
     cur.execute("DROP TABLE IF EXISTS daily_report")
@@ -77,7 +79,7 @@ def create_db():
     )
 
     conn.commit()
-    print(f"✅ {len(rows)}개 행 생성 완료 → {DB_PATH}")
+    print(f"OK: {len(rows)} rows written to {DB_PATH}")
     conn.close()
 
 
